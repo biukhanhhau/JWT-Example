@@ -9,6 +9,10 @@ import org.springframework.security.config.annotation.web.configurers.AuthorizeH
 import org.springframework.security.config.annotation.web.configurers.CsrfConfigurer;
 import org.springframework.security.config.annotation.web.configurers.HttpBasicConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
@@ -26,27 +30,33 @@ public class SercurityConfig {
         chuyển sang trạng thái stateless cho session
         endregion*/
 
-//        http.csrf(customizer -> customizer.disable())
-//                .authorizeHttpRequests(request -> request.anyRequest().authenticated())
-//                .httpBasic(Customizer.withDefaults())
-//                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
-
-        Customizer<CsrfConfigurer<HttpSecurity>> disCsrf = new Customizer<CsrfConfigurer<HttpSecurity>>() {
-            @Override
-            public void customize(CsrfConfigurer<HttpSecurity> httpSecurityCsrfConfigurer) {
-                httpSecurityCsrfConfigurer.disable();
-            }
-        };
-        http.csrf(disCsrf);
-
-        Customizer<AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry> authentication = new Customizer<AuthorizeHttpRequestsConfigurer<org.springframework.security.config.annotation.web.builders.HttpSecurity>.AuthorizationManagerRequestMatcherRegistry>() {
-            @Override
-            public void customize(AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry authorizationManagerRequestMatcherRegistry) {
-                authorizationManagerRequestMatcherRegistry.anyRequest().authenticated();
-            }
-        };
-        http.authorizeHttpRequests(authentication);
-
+        http.csrf(customizer -> customizer.disable())
+                .authorizeHttpRequests(request -> request.anyRequest().authenticated())
+                .httpBasic(Customizer.withDefaults())
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+//
+//        Customizer<CsrfConfigurer<HttpSecurity>> disCsrf = new Customizer<CsrfConfigurer<HttpSecurity>>() {
+//            @Override
+//            public void customize(CsrfConfigurer<HttpSecurity> httpSecurityCsrfConfigurer) {
+//                httpSecurityCsrfConfigurer.disable();
+//            }
+//        };
+//        http.csrf(disCsrf);
+//
+//        Customizer<AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry> authentication = new Customizer<AuthorizeHttpRequestsConfigurer<org.springframework.security.config.annotation.web.builders.HttpSecurity>.AuthorizationManagerRequestMatcherRegistry>() {
+//            @Override
+//            public void customize(AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry authorizationManagerRequestMatcherRegistry) {
+//                authorizationManagerRequestMatcherRegistry.anyRequest().authenticated();
+//            }
+//        };
+//        http.authorizeHttpRequests(authentication);
         return http.build();
+    }
+
+    @Bean
+    public UserDetailsService userDetailsService(){
+        UserDetails admin = User.withDefaultPasswordEncoder().username("bill").password("Mountain@15").roles("ADMIN").build();
+        UserDetails user = User.withDefaultPasswordEncoder().username("guest").password("Mountain@15").roles("USER").build();
+        return new InMemoryUserDetailsManager(admin, user);
     }
 }
