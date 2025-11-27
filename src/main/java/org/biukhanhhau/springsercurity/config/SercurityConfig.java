@@ -1,62 +1,80 @@
 package org.biukhanhhau.springsercurity.config;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer;
-import org.springframework.security.config.annotation.web.configurers.CsrfConfigurer;
-import org.springframework.security.config.annotation.web.configurers.HttpBasicConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.NoOpPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
 public class SercurityConfig {
 
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    @Autowired
+    private UserDetailsService userDetailsService;
 
-        /*region basic
-        http.csrf(customizer->customizer.disable());      tắt tính năng bảo vệ vì đã Stateless cái cookie rồi
-        http.authorizeHttpRequests(request->request.anyRequest().authenticated());       tất cả những request cần được xác minh
-        http.httpBasic(Customizer.withDefaults());      bật cái khung login default lên
-        http.sessionManagement(session->session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
-        chuyển sang trạng thái stateless cho session
-        endregion*/
+    @Autowired
+    private jwtFilter jwtFilter;
+
+    @Bean
+    public AuthenticationProvider authProvider() {
+        DaoAuthenticationProvider provider=new DaoAuthenticationProvider(userDetailsService); // check qua UserDetailsService và UserPrinciple
+        provider.setPasswordEncoder(passwordEncoder());             // Set loại password encoder muốn xài
+        return provider;
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder(){
+        return new BCryptPasswordEncoder(12);           //set sức mạnh của BCrypt
+    }
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception{
 
         http.csrf(customizer -> customizer.disable())
-                .authorizeHttpRequests(request -> request.anyRequest().authenticated())
+                .authorizeHttpRequests(request -> request
+                        .requestMatchers("/register", "/login").permitAll()    // cấp quyền không cần xác minh
+                        .anyRequest().authenticated())                    // bắt xác minh tất cả còn lại
                 .httpBasic(Customizer.withDefaults())
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
-//
-//        Customizer<CsrfConfigurer<HttpSecurity>> disCsrf = new Customizer<CsrfConfigurer<HttpSecurity>>() {
-//            @Override
-//            public void customize(CsrfConfigurer<HttpSecurity> httpSecurityCsrfConfigurer) {
-//                httpSecurityCsrfConfigurer.disable();
-//            }
-//        };
-//        http.csrf(disCsrf);
-//
-//        Customizer<AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry> authentication = new Customizer<AuthorizeHttpRequestsConfigurer<org.springframework.security.config.annotation.web.builders.HttpSecurity>.AuthorizationManagerRequestMatcherRegistry>() {
-//            @Override
-//            public void customize(AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry authorizationManagerRequestMatcherRegistry) {
-//                authorizationManagerRequestMatcherRegistry.anyRequest().authenticated();
-//            }
-//        };
-//        http.authorizeHttpRequests(authentication);
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);  // gọi filter
+
         return http.build();
     }
 
     @Bean
-    public UserDetailsService userDetailsService(){
-        UserDetails admin = User.withDefaultPasswordEncoder().username("bill").password("Mountain@15").roles("ADMIN").build();
-        UserDetails user = User.withDefaultPasswordEncoder().username("guest").password("Mountain@15").roles("USER").build();
-        return new InMemoryUserDetailsManager(admin, user);
+    public AuthenticationManager manager(AuthenticationConfiguration configuration){
+        return configuration.getAuthenticationManager();
     }
+
+
+
+    /*
+     * @Bean public UserDetailsService userDetailsService() {
+     *
+     * UserDetails user=User .withDefaultPasswordEncoder() .username("navin")
+     * .password("n@123") .roles("USER") .build();
+     *
+     * UserDetails admin=User .withDefaultPasswordEncoder() .username("admin")
+     * .password("admin@789") .roles("ADMIN") .build();
+     *
+     * return new InMemoryUserDetailsManager(user,admin); }
+     */
+
+
 }
